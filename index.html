@@ -1,929 +1,645 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
-    <title>蛋白质等电点 · 离子全动态解离模拟器</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,700;14..32,800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --panel-bg: #ffffff;
-            --text-primary: #0f172a;
-            --text-secondary: #475569;
-            --border-color: #e2e8f0;
-            --color-positive: #FF3B30;
-            --color-negative: #000000;
-            --color-zwitter: #34C759;
-            --color-hydroxide: #007AFF;
-            --color-core: #1e293b;
-            --touch-min: 44px;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        html {
-            height: 100%;
-            -webkit-tap-highlight-color: transparent;
-            -webkit-user-select: none;
-            user-select: none;
-        }
-
-        body {
-            font-family: 'Inter', 'Noto Sans SC', sans-serif;
-            background-color: #e9eef3;
-            height: 100vh;
-            height: 100dvh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            touch-action: manipulation;
-        }
-
-        /* ========== 顶部控制面板 ========== */
-        #control-panel {
-            width: 100%;
-            background-color: var(--panel-bg);
-            border-bottom: 1px solid #cbd5e1;
-            padding: 14px 14px 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
-            z-index: 20;
-            background: rgba(255, 255, 255, 0.97);
-            flex-shrink: 0;
-            overflow-y: auto;
-            max-height: 52vh;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        .brand h1 {
-            font-size: 17px;
-            font-weight: 800;
-            color: var(--text-primary);
-            white-space: nowrap;
-        }
-        .brand .subtitle {
-            font-size: 9px;
-            font-weight: 700;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            border-left: 3px solid var(--color-zwitter);
-            padding-left: 8px;
-            white-space: nowrap;
-        }
-
-        /* 参数行：pH和pI并排 */
-        .params-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-        }
-        .slider-card {
-            background: #f8fafc;
-            padding: 10px 12px;
-            border-radius: 10px;
-            border: 1px solid #e2e8f0;
-            touch-action: none;
-        }
-        .slider-card.pi-card {
-            border-color: #34C759;
-        }
-        .slider-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 12px;
-            font-weight: 700;
-            margin-bottom: 6px;
-        }
-        .slider-header span:first-child {
-            font-size: 11px;
-            white-space: nowrap;
-        }
-        .slider-header .val {
-            font-size: 17px;
-            font-weight: 800;
-        }
-        .pi-card .slider-header .val {
-            color: #34C759;
-        }
-
-        input[type="range"] {
-            width: 100%;
-            height: 28px;
-            accent-color: var(--text-primary);
-            margin: 0;
-            padding: 0;
-            cursor: pointer;
-            touch-action: none;
-            background: transparent;
-        }
-        .pi-card input[type="range"] {
-            accent-color: #34C759;
-        }
-
-        /* 按钮行 */
-        .btn-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 7px;
-        }
-        .btn-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 5px;
-        }
-        .btn-group-label {
-            font-size: 9px;
-            font-weight: 700;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            grid-column: 1 / -1;
-            margin-bottom: 0;
-            text-align: center;
-        }
-
-        button {
-            padding: 10px 6px;
-            border: 1.5px solid #cbd5e1;
-            background: white;
-            border-radius: 10px;
-            font-size: 11px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.15s;
-            color: var(--text-primary);
-            min-height: var(--touch-min);
-            touch-action: manipulation;
-            white-space: nowrap;
-            letter-spacing: -0.2px;
-        }
-        button:active {
-            transform: scale(0.96);
-            background: #e2e8f0;
-        }
-        button.active {
-            background: var(--text-primary);
-            color: white;
-            border-color: var(--text-primary);
-            font-weight: 700;
-        }
-
-        /* 监控面板 */
-        .monitor-card {
-            background: #0f172a;
-            color: #fff;
-            padding: 10px 12px;
-            border-radius: 12px;
-            font-family: 'JetBrains Mono', monospace;
-            border: 1px solid #1e293b;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px 10px;
-        }
-        .monitor-line {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 10px;
-            gap: 4px;
-        }
-        .monitor-line.full-width {
-            grid-column: 1 / -1;
-        }
-        .monitor-line span:first-child {
-            color: #94a3b8;
-            white-space: nowrap;
-            font-size: 9px;
-        }
-        .monitor-line span:last-child {
-            text-align: right;
-            font-weight: 700;
-            font-size: 11px;
-        }
-
-        /* ========== 舞台容器 ========== */
-        #stage-container {
-            flex: 1;
-            position: relative;
-            background: #fff;
-            display: flex;
-            flex-direction: column;
-            min-height: 280px;
-            overflow: hidden;
-        }
-        canvas {
-            width: 100%;
-            height: 100%;
-            display: block;
-            touch-action: none;
-        }
-
-        #anode-line,
-        #cathode-line {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            width: 8px;
-            z-index: 10;
-            pointer-events: none;
-        }
-        #anode-line {
-            left: 0;
-            background: linear-gradient(to right, #FF3B30, #ff6b5e);
-            box-shadow: 3px 0 10px rgba(255, 59, 48, 0.35);
-        }
-        #cathode-line {
-            right: 0;
-            background: linear-gradient(to left, #000, #1e1e1e);
-            box-shadow: -3px 0 10px rgba(0, 0, 0, 0.45);
-        }
-        .pole-label {
-            position: absolute;
-            top: 10px;
-            font-weight: 800;
-            font-size: 10px;
-            z-index: 15;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 4px 10px;
-            border-radius: 20px;
-            border: 1.5px solid;
-            pointer-events: none;
-            white-space: nowrap;
-        }
-
-        /* ========== 响应式微调 ========== */
-        @media (min-width: 500px) {
-            #control-panel {
-                padding: 18px 20px 14px;
-                gap: 10px;
-                max-height: 48vh;
-            }
-            .brand h1 {
-                font-size: 20px;
-            }
-            .brand .subtitle {
-                font-size: 10px;
-            }
-            .slider-card {
-                padding: 12px 14px;
-            }
-            .slider-header {
-                font-size: 13px;
-            }
-            .slider-header .val {
-                font-size: 19px;
-            }
-            button {
-                font-size: 12px;
-                padding: 11px 8px;
-            }
-            .monitor-card {
-                padding: 12px 14px;
-            }
-            .monitor-line {
-                font-size: 11px;
-            }
-            .monitor-line span:first-child {
-                font-size: 10px;
-            }
-            .monitor-line span:last-child {
-                font-size: 12px;
-            }
-            .pole-label {
-                font-size: 11px;
-                padding: 5px 12px;
-                top: 14px;
-            }
-            #anode-line,
-            #cathode-line {
-                width: 10px;
-            }
-        }
-
-        @media (min-width: 768px) {
-            body {
-                flex-direction: row;
-            }
-            #control-panel {
-                width: 340px;
-                max-height: none;
-                border-right: 1px solid #cbd5e1;
-                border-bottom: none;
-                padding: 22px 18px;
-                gap: 12px;
-                overflow-y: auto;
-                flex-shrink: 0;
-            }
-            #stage-container {
-                min-height: 0;
-            }
-            .params-row {
-                grid-template-columns: 1fr;
-                gap: 8px;
-            }
-            .btn-row {
-                grid-template-columns: 1fr;
-                gap: 8px;
-            }
-            .monitor-card {
-                grid-template-columns: 1fr;
-            }
-            .monitor-line.full-width {
-                grid-column: auto;
-            }
-            .pole-label {
-                font-size: 12px;
-                top: 20px;
-                padding: 6px 14px;
-            }
-            #anode-line,
-            #cathode-line {
-                width: 12px;
-            }
-            button {
-                font-size: 12px;
-                min-height: 40px;
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>蛋白质等电点 · 离子全动态解离模拟器</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,700;14..32,800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --panel-bg: #ffffff;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --border-color: #e2e8f0;
+      --color-positive: #FF3B30;
+      --color-negative: #000000;
+      --color-zwitter: #34C759;
+      --color-hydroxide: #007AFF;
+      --color-core: #1e293b;
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Inter', 'Noto Sans SC', sans-serif;
+      background-color: #e9eef3;
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+    #control-panel {
+      width: 380px;
+      background-color: var(--panel-bg);
+      border-right: 1px solid #cbd5e1;
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+      z-index: 20;
+      background: rgba(255, 255, 255, 0.95);
+      overflow-y: auto;
+    }
+    .brand h1 {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+    .brand .subtitle {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-left: 4px solid var(--color-zwitter);
+      padding-left: 10px;
+      margin-bottom: 24px;
+    }
+    .section {
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 20px;
+    }
+    .section:last-of-type {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+    .slider-card {
+      background: #f8fafc;
+      padding: 16px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      margin-bottom: 14px;
+    }
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      accent-color: var(--text-primary);
+    }
+    .btn-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    button {
+      padding: 11px 8px;
+      border: 1.5px solid #cbd5e1;
+      background: white;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+      color: var(--text-primary);
+    }
+    button:hover {
+      background: #f1f5f9;
+      border-color: #94a3b8;
+    }
+    button.active {
+      background: var(--text-primary);
+      color: white;
+      border-color: var(--text-primary);
+    }
+    .monitor-card {
+      background: #0f172a;
+      color: #fff;
+      padding: 18px 16px;
+      border-radius: 14px;
+      font-family: 'JetBrains Mono', monospace;
+      border: 1px solid #1e293b;
+    }
+    .monitor-line {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-size: 13px;
+      border-bottom: 1px dashed #334155;
+      padding-bottom: 7px;
+    }
+    .monitor-line:last-child {
+      margin-bottom: 0;
+      border: none;
+    }
+    #stage-container {
+      flex-grow: 1;
+      position: relative;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    #anode-line,
+    #cathode-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 12px;
+      z-index: 10;
+    }
+    #anode-line {
+      left: 0;
+      background: linear-gradient(to right, #FF3B30, #ff6b5e);
+      box-shadow: 4px 0 12px rgba(255, 59, 48, 0.4);
+    }
+    #cathode-line {
+      right: 0;
+      background: linear-gradient(to left, #000, #1e1e1e);
+      box-shadow: -4px 0 12px rgba(0, 0, 0, 0.5);
+    }
+    .pole-label {
+      position: absolute;
+      top: 24px;
+      font-weight: 800;
+      font-size: 13px;
+      z-index: 15;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 6px 14px;
+      border-radius: 30px;
+      border: 2px solid;
+    }
+  </style>
 </head>
 <body>
-    <div id="control-panel">
-        <!-- 品牌标题 -->
-        <div class="brand">
-            <h1>🧬 蛋白质等电点</h1>
-            <div class="subtitle">pI · 离子迁移可视化</div>
+  <div id="control-panel">
+    <div>
+      <div class="brand">
+        <h1>🧬 蛋白质等电点</h1>
+        <div class="subtitle">PROTEIN pI · 离子迁移可视化</div>
+      </div>
+      <div class="section">
+        <div class="section-title">⚡ 参数调控</div>
+        <div class="slider-card">
+          <div class="slider-header"><span>🌡️ 环境 pH</span><span id="ph-display" style="font-size:20px;">7.0</span></div>
+          <input type="range" id="ph-slider" min="1.0" max="14.0" step="0.1" value="7.0">
         </div>
-
-        <!-- pH 和 pI 参数行 -->
-        <div class="params-row">
-            <div class="slider-card">
-                <div class="slider-header"><span>🌡️ 环境pH</span><span class="val" id="ph-display">7.0</span></div>
-                <input type="range" id="ph-slider" min="1.0" max="14.0" step="0.1" value="7.0" aria-label="环境pH滑块">
-            </div>
-            <div class="slider-card pi-card">
-                <div class="slider-header"><span style="color:#16a34a;">🧪 蛋白质pI</span><span class="val" id="pi-display">6.0</span></div>
-                <input type="range" id="pi-slider" min="1.0" max="14.0" step="0.1" value="6.0" aria-label="蛋白质等电点滑块">
-            </div>
+        <div class="slider-card" style="border-color:#34C759;">
+          <div class="slider-header"><span style="color:#16a34a;">🧪 蛋白质 pI</span><span id="pi-display" style="font-size:20px; color:#34C759;">6.0</span></div>
+          <input type="range" id="pi-slider" min="1.0" max="14.0" step="0.1" value="6.0">
         </div>
-
-        <!-- 按钮行 -->
-        <div class="btn-row">
-            <div class="btn-group">
-                <span class="btn-group-label">🔬 观察尺度</span>
-                <button id="btn-single" class="active">🧪 单一分子</button>
-                <button id="btn-multi">🧬 多分子群</button>
-            </div>
-            <div class="btn-group">
-                <span class="btn-group-label">🌍 物理环境</span>
-                <button id="btn-lab" class="active">⚡ 电泳槽</button>
-                <button id="btn-bio">💧 生物体内</button>
-            </div>
+      </div>
+      <div class="section">
+        <div class="section-title">🔬 观察尺度</div>
+        <div class="btn-group">
+          <button id="btn-single" class="active">🧪 单一分子</button>
+          <button id="btn-multi">🧬 多分子群</button>
         </div>
-
-        <!-- 实时监控 -->
-        <div class="monitor-card" id="monitor-card">
-            <div class="monitor-line full-width">
-                <span>🔵🔴 环境离子</span><span id="data-env">—</span>
-            </div>
-            <div class="monitor-line">
-                <span>⚡ 净电荷</span><span id="data-charge" style="font-size:16px;">0</span>
-            </div>
-            <div class="monitor-line">
-                <span>🧬 解离状态</span><span id="data-state">—</span>
-            </div>
-            <div class="monitor-line">
-                <span>🏊 泳动方向</span><span id="data-solubility">—</span>
-            </div>
+      </div>
+      <div class="section">
+        <div class="section-title">🌍 物理环境</div>
+        <div class="btn-group">
+          <button id="btn-lab" class="active">⚡ 电泳槽</button>
+          <button id="btn-bio">💧 生物体内</button>
         </div>
+      </div>
     </div>
-
-    <div id="stage-container">
-        <div id="anode-line"></div>
-        <div id="cathode-line"></div>
-        <div class="pole-label" style="left:12px; color:#FF3B30;">[ + ] 正极</div>
-        <div class="pole-label" style="right:12px; color:#000;">[ − ] 负极</div>
-        <canvas id="simCanvas"></canvas>
+    <div>
+      <div class="section-title" style="margin-bottom:10px;">📊 实时监控</div>
+      <div class="monitor-card">
+        <div class="monitor-line"><span>🔵🔴 环境离子</span><span id="data-env">—</span></div>
+        <div class="monitor-line"><span>⚡ 分子净电荷</span><span id="data-charge" style="font-size:18px;">0</span></div>
+        <div class="monitor-line"><span>🧬 解离状态</span><span id="data-state">—</span></div>
+        <div class="monitor-line"><span>🏊 泳动方向</span><span id="data-solubility">—</span></div>
+      </div>
     </div>
+  </div>
 
-    <script>
-        (function() {
-            const canvas = document.getElementById('simCanvas');
-            const ctx = canvas.getContext('2d');
-            const phSlider = document.getElementById('ph-slider');
-            const phDisplay = document.getElementById('ph-display');
-            const piSlider = document.getElementById('pi-slider');
-            const piDisplay = document.getElementById('pi-display');
-            const dataEnv = document.getElementById('data-env');
-            const dataCharge = document.getElementById('data-charge');
-            const dataState = document.getElementById('data-state');
-            const dataSolubility = document.getElementById('data-solubility');
+  <div id="stage-container">
+    <div id="anode-line"></div>
+    <div id="cathode-line"></div>
+    <div class="pole-label" style="left:20px; color:#FF3B30;">[ + ] 正极</div>
+    <div class="pole-label" style="right:20px; color:#000;">[ − ] 负极</div>
+    <canvas id="simCanvas"></canvas>
+  </div>
 
-            const COLOR_RED = '#FF3B30';
-            const COLOR_BLK = '#000000';
-            const COLOR_GRN = '#34C759';
-            const COLOR_BLU = '#007AFF';
-            const COLOR_CORE = '#1e293b';
+  <script>
+    (function() {
+      const canvas = document.getElementById('simCanvas');
+      const ctx = canvas.getContext('2d');
+      const phSlider = document.getElementById('ph-slider');
+      const phDisplay = document.getElementById('ph-display');
+      const piSlider = document.getElementById('pi-slider');
+      const piDisplay = document.getElementById('pi-display');
+      const dataEnv = document.getElementById('data-env');
+      const dataCharge = document.getElementById('data-charge');
+      const dataState = document.getElementById('data-state');
+      const dataSolubility = document.getElementById('data-solubility');
 
-            let isMulti = false;
-            let isLab = true;
-            let molecules = [];
-            let hIons = [];
-            let ohIons = [];
-            let animationId;
-            let lastTimestamp = 0;
-            let singleMolRadius = 68;
-            let funcGroupOffset = 75;
+      const COLOR_RED = '#FF3B30';
+      const COLOR_BLK = '#000000';
+      const COLOR_GRN = '#34C759';
+      const COLOR_BLU = '#007AFF';
+      const COLOR_CORE = '#1e293b';
 
-            function getSingleMolRadius() {
-                return Math.max(32, Math.min(68, canvas.width * 0.17));
+      let isMulti = false;
+      let isLab = true;
+      let molecules = [];
+      let hIons = [];
+      let ohIons = [];
+      let animationId;
+      let lastTimestamp = 0;
+
+      function resizeCanvas() {
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = canvas.parentElement.clientHeight;
+        initSystem();
+      }
+
+      function initSystem() {
+        molecules = [];
+        hIons = [];
+        ohIons = [];
+        const count = isMulti ? 55 : 1;
+        for (let i = 0; i < count; i++) {
+          molecules.push({
+            x: isMulti ? Math.random() * (canvas.width - 160) + 80 : canvas.width / 2,
+            y: isMulti ? Math.random() * (canvas.height - 200) + 80 : canvas.height / 2,
+            vx: (Math.random() - 0.5) * 0.4,
+            vy: (Math.random() - 0.5) * 0.4,
+            radius: isMulti ? 16 : 68,
+          });
+        }
+        updateEnvironmentIons();
+      }
+
+      function updateEnvironmentIons() {
+        const ph = parseFloat(phSlider.value);
+        const maxIons = 80;
+        const targetH = Math.max(0, Math.floor(((14 - ph) / 13) * maxIons));
+        const targetOH = Math.max(0, Math.floor(((ph - 1) / 13) * maxIons));
+
+        const now = performance.now();
+        while (hIons.length < targetH) {
+          hIons.push({
+            x: 40 + Math.random() * (canvas.width - 80),
+            y: Math.random() * canvas.height,
+            vx: 0.6 + Math.random() * 0.5,
+            vy: (Math.random() - 0.5) * 0.3,
+            state: 'moving',
+            arriveTime: 0,
+          });
+        }
+        if (hIons.length > targetH) hIons.length = targetH;
+
+        while (ohIons.length < targetOH) {
+          ohIons.push({
+            x: 40 + Math.random() * (canvas.width - 80),
+            y: Math.random() * canvas.height,
+            vx: -0.6 - Math.random() * 0.5,
+            vy: (Math.random() - 0.5) * 0.3,
+            state: 'moving',
+            arriveTime: 0,
+          });
+        }
+        if (ohIons.length > targetOH) ohIons.length = targetOH;
+      }
+
+      function drawFunctionalGroup(x, y, bg, text, stroke) {
+        ctx.beginPath();
+        ctx.arc(x, y, 26, 0, Math.PI * 2);
+        ctx.fillStyle = bg;
+        ctx.fill();
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = 3.5;
+        ctx.stroke();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 13px "JetBrains Mono"';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, x, y);
+      }
+
+      function animate(timestamp) {
+        if (!lastTimestamp) lastTimestamp = timestamp;
+        const dt = Math.min(50, timestamp - lastTimestamp);
+        lastTimestamp = timestamp;
+
+        updateEnvironmentIons();
+        const ph = parseFloat(phSlider.value);
+        const pI = parseFloat(piSlider.value);
+        const diff = ph - pI;
+        const isAtPI = Math.abs(diff) <= 0.3;
+        const isCationic = diff < -0.3;
+        const isAnionic = diff > 0.3;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        for (let i = 0; i < canvas.width; i += 40) {
+          ctx.beginPath();
+          ctx.moveTo(i, 0);
+          ctx.lineTo(i, canvas.height);
+          ctx.strokeStyle = '#e9eef3';
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+
+        document.getElementById('anode-line').style.display = isLab ? 'block' : 'none';
+        document.getElementById('cathode-line').style.display = isLab ? 'block' : 'none';
+        document.querySelectorAll('.pole-label').forEach(el => el.style.display = isLab ? 'block' : 'none');
+
+        const leftEdge = 18;
+        const rightEdge = canvas.width - 18;
+        const stayDuration = 1200;
+
+        // ========== 离子运动 ==========
+        if (isLab) {
+          // ---- 电场模式 ----
+          // H⁺ (红) → 向负极(右)移动
+          for (let i = hIons.length - 1; i >= 0; i--) {
+            const p = hIons[i];
+            if (p.state === 'moving') {
+              p.vx += 0.025;
+              if (p.vx > 2.0) p.vx = 2.0;
+              p.x += p.vx;
+              p.y += p.vy;
+              if (p.y < 8) { p.y = 8;
+                p.vy *= -0.4; }
+              if (p.y > canvas.height - 8) { p.y = canvas.height - 8;
+                p.vy *= -0.4; }
+              if (p.x >= rightEdge) {
+                p.x = rightEdge;
+                p.state = 'arrived';
+                p.arriveTime = timestamp;
+                p.vx = 0;
+                p.vy = 0;
+              }
+            } else if (p.state === 'arrived') {
+              if (timestamp - p.arriveTime >= stayDuration) {
+                p.x = 40 + Math.random() * (canvas.width - 80);
+                p.y = 20 + Math.random() * (canvas.height - 40);
+                p.vx = 0.6 + Math.random() * 0.5;
+                p.vy = (Math.random() - 0.5) * 0.3;
+                p.state = 'moving';
+              }
             }
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 4.5, 0, Math.PI * 2);
+            ctx.fillStyle = COLOR_RED;
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+          }
 
-            function getMultiMolRadius() {
-                return Math.max(8, Math.min(16, canvas.width * 0.038));
+          // OH⁻ (蓝) → 向正极(左)移动
+          for (let i = ohIons.length - 1; i >= 0; i--) {
+            const p = ohIons[i];
+            if (p.state === 'moving') {
+              p.vx -= 0.025;
+              if (p.vx < -2.0) p.vx = -2.0;
+              p.x += p.vx;
+              p.y += p.vy;
+              if (p.y < 8) { p.y = 8;
+                p.vy *= -0.4; }
+              if (p.y > canvas.height - 8) { p.y = canvas.height - 8;
+                p.vy *= -0.4; }
+              if (p.x <= leftEdge) {
+                p.x = leftEdge;
+                p.state = 'arrived';
+                p.arriveTime = timestamp;
+                p.vx = 0;
+                p.vy = 0;
+              }
+            } else if (p.state === 'arrived') {
+              if (timestamp - p.arriveTime >= stayDuration) {
+                p.x = 40 + Math.random() * (canvas.width - 80);
+                p.y = 20 + Math.random() * (canvas.height - 40);
+                p.vx = -0.6 - Math.random() * 0.5;
+                p.vy = (Math.random() - 0.5) * 0.3;
+                p.state = 'moving';
+              }
             }
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 4.5, 0, Math.PI * 2);
+            ctx.fillStyle = COLOR_BLU;
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+          }
+        } else {
+          // ---- 生物体内模式：纯随机布朗运动 ----
+          for (let p of hIons) {
+            p.vx += (Math.random() - 0.5) * 0.7;
+            p.vy += (Math.random() - 0.5) * 0.7;
+            const spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+            if (spd > 2.0) { p.vx *= 2.0 / spd;
+              p.vy *= 2.0 / spd; }
+            p.x += p.vx;
+            p.y += p.vy;
+            if (p.x < leftEdge) { p.x = leftEdge;
+              p.vx *= -0.9; }
+            if (p.x > rightEdge) { p.x = rightEdge;
+              p.vx *= -0.9; }
+            if (p.y < 10) { p.y = 10;
+              p.vy *= -0.9; }
+            if (p.y > canvas.height - 10) { p.y = canvas.height - 10;
+              p.vy *= -0.9; }
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 4.5, 0, Math.PI * 2);
+            ctx.fillStyle = COLOR_RED;
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+          }
+          for (let p of ohIons) {
+            p.vx += (Math.random() - 0.5) * 0.7;
+            p.vy += (Math.random() - 0.5) * 0.7;
+            const spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+            if (spd > 2.0) { p.vx *= 2.0 / spd;
+              p.vy *= 2.0 / spd; }
+            p.x += p.vx;
+            p.y += p.vy;
+            if (p.x < leftEdge) { p.x = leftEdge;
+              p.vx *= -0.9; }
+            if (p.x > rightEdge) { p.x = rightEdge;
+              p.vx *= -0.9; }
+            if (p.y < 10) { p.y = 10;
+              p.vy *= -0.9; }
+            if (p.y > canvas.height - 10) { p.y = canvas.height - 10;
+              p.vy *= -0.9; }
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 4.5, 0, Math.PI * 2);
+            ctx.fillStyle = COLOR_BLU;
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+          }
+        }
 
-            function getFuncGroupOffset(radius) {
-                return radius * 1.15;
+        // ========== 蛋白质分子 ==========
+        let netChargeLabel = '±';
+        let netChargeValue = '0.0';
+        if (isCationic) { netChargeLabel = '+';
+          netChargeValue = '+' + Math.abs(diff).toFixed(1); } else if (isAnionic) { netChargeLabel = '−';
+          netChargeValue = '−' + Math.abs(diff).toFixed(1); }
+
+        for (let m of molecules) {
+          if (!isLab || isAtPI) {
+            m.vx += (Math.random() - 0.5) * 0.3;
+            m.vy += (Math.random() - 0.5) * 0.3;
+          }
+          if (isLab) {
+            if (isCationic) m.vx += 0.28;
+            if (isAnionic) m.vx -= 0.28;
+          }
+          if (isMulti && isAtPI) {
+            for (let other of molecules) {
+              if (other === m) continue;
+              let dx = other.x - m.x,
+                dy = other.y - m.y;
+              let dist = Math.sqrt(dx * dx + dy * dy);
+              if (dist < 80 && dist > 15) {
+                m.vx += (dx / dist) * 0.15;
+                m.vy += (dy / dist) * 0.15;
+              }
             }
+            m.vy += 0.25;
+          }
+          m.vx *= 0.9;
+          m.vy *= 0.9;
+          m.x += m.vx;
+          m.y += m.vy;
+          let edge = m.radius + 20;
+          m.x = Math.max(edge, Math.min(canvas.width - edge, m.x));
+          m.y = Math.max(m.radius + 10, Math.min(canvas.height - m.radius - 10, m.y));
 
-            function getMultiMolCount() {
-                const w = canvas.width;
-                if (w < 360) return 28;
-                if (w < 500) return 38;
-                return 55;
-            }
+          if (!isMulti) {
+            ctx.beginPath();
+            ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2);
+            ctx.fillStyle = COLOR_CORE;
+            ctx.fill();
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 5;
+            ctx.stroke();
+            if (isCationic) drawFunctionalGroup(m.x - 75, m.y, COLOR_RED, '—NH₃⁺', '#000');
+            else if (isAtPI) {
+              drawFunctionalGroup(m.x - 75, m.y, COLOR_RED, '—NH₃⁺', '#000');
+              drawFunctionalGroup(m.x + 75, m.y, COLOR_BLK, '—COO⁻', '#fff');
+            } else if (isAnionic) drawFunctionalGroup(m.x + 75, m.y, COLOR_BLK, '—COO⁻', '#fff');
+            ctx.fillStyle = isAtPI ? COLOR_GRN : '#fff';
+            ctx.font = 'bold 38px "Inter"';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(netChargeLabel, m.x, m.y);
+            ctx.fillStyle = '#0f172a';
+            ctx.font = '500 14px "Inter"';
+            ctx.fillText('蛋白质', m.x, m.y - 55);
+          } else {
+            let mColor = COLOR_GRN;
+            if (isCationic) mColor = COLOR_RED;
+            if (isAnionic) mColor = COLOR_BLK;
+            ctx.beginPath();
+            ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2);
+            ctx.fillStyle = mColor;
+            ctx.fill();
+            ctx.strokeStyle = isAnionic ? '#fff' : '#0f172a';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 16px "Inter"';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(netChargeLabel, m.x, m.y);
+          }
+        }
 
-            function resizeCanvas() {
-                const container = canvas.parentElement;
-                const rect = container.getBoundingClientRect();
-                const dpr = Math.min(window.devicePixelRatio || 1, 2);
-                const newWidth = Math.floor(rect.width);
-                const newHeight = Math.floor(rect.height);
-                if (canvas.width !== newWidth * dpr || canvas.height !== newHeight * dpr) {
-                    canvas.width = newWidth * dpr;
-                    canvas.height = newHeight * dpr;
-                    canvas.style.width = newWidth + 'px';
-                    canvas.style.height = newHeight + 'px';
-                    ctx.setTransform(1, 0, 0, 1, 0, 0);
-                    ctx.scale(dpr, dpr);
-                }
-                singleMolRadius = getSingleMolRadius();
-                funcGroupOffset = getFuncGroupOffset(singleMolRadius);
-                initSystem();
-            }
+        // 监控面板
+        phDisplay.innerText = ph.toFixed(1);
+        piDisplay.innerText = pI.toFixed(1);
+        dataCharge.innerText = netChargeValue;
+        if (ph < 6.8) dataEnv.innerHTML = '<span style="color:#FF3B30;">H⁺ (红) 多于 OH⁻ (蓝)</span>';
+        else if (ph > 7.2) dataEnv.innerHTML = '<span style="color:#007AFF;">OH⁻ (蓝) 多于 H⁺ (红)</span>';
+        else dataEnv.innerHTML = '<span style="color:#94a3b8;">H⁺ 与 OH⁻ 平衡</span>';
 
-            function initSystem() {
-                molecules = [];
-                hIons = [];
-                ohIons = [];
-                const w = canvas.width / (Math.min(window.devicePixelRatio || 1, 2));
-                const h = canvas.height / (Math.min(window.devicePixelRatio || 1, 2));
-                const count = isMulti ? getMultiMolCount() : 1;
-                const mRadius = isMulti ? getMultiMolRadius() : singleMolRadius;
+        if (isAtPI) {
+          dataCharge.style.color = COLOR_GRN;
+          dataState.innerHTML =
+            '<span style="background:#34C759;color:#fff;padding:2px 8px;border-radius:20px;">兼性离子</span>';
+          dataSolubility.innerText = isLab ? '⏸️ 静止' : '🌊 布朗扩散';
+          dataSolubility.style.color = COLOR_GRN;
+        } else if (isCationic) {
+          dataCharge.style.color = COLOR_RED;
+          dataState.innerHTML =
+            '<span style="background:#FF3B30;color:#fff;padding:2px 8px;border-radius:20px;">阳离子</span>';
+          dataSolubility.innerText = isLab ? '➡️ 向负极' : '🌊 布朗扩散';
+          dataSolubility.style.color = COLOR_RED;
+        } else {
+          dataCharge.style.color = '#fff';
+          dataState.innerHTML =
+            '<span style="background:#000;color:#fff;padding:2px 8px;border-radius:20px;">阴离子</span>';
+          dataSolubility.innerText = isLab ? '⬅️ 向正极' : '🌊 布朗扩散';
+          dataSolubility.style.color = '#94a3b8';
+        }
 
-                for (let i = 0; i < count; i++) {
-                    molecules.push({
-                        x: isMulti ? Math.random() * (w - mRadius * 4) + mRadius * 2 : w / 2,
-                        y: isMulti ? Math.random() * (h - mRadius * 4) + mRadius * 2 : h / 2,
-                        vx: (Math.random() - 0.5) * 0.3,
-                        vy: (Math.random() - 0.5) * 0.3,
-                        radius: mRadius,
-                    });
-                }
-                updateEnvironmentIons();
-            }
+        animationId = requestAnimationFrame(animate);
+      }
 
-            function updateEnvironmentIons() {
-                const ph = parseFloat(phSlider.value);
-                const w = canvas.width / (Math.min(window.devicePixelRatio || 1, 2));
-                const h = canvas.height / (Math.min(window.devicePixelRatio || 1, 2));
-                const maxIons = Math.min(80, Math.floor(w * 0.18));
-                const targetH = Math.max(0, Math.floor(((14 - ph) / 13) * maxIons));
-                const targetOH = Math.max(0, Math.floor(((ph - 1) / 13) * maxIons));
+      phSlider.addEventListener('input', updateEnvironmentIons);
+      piSlider.addEventListener('input', () => {});
 
-                while (hIons.length < targetH) {
-                    hIons.push({
-                        x: 30 + Math.random() * (w - 60),
-                        y: Math.random() * h,
-                        vx: 0.5 + Math.random() * 0.45,
-                        vy: (Math.random() - 0.5) * 0.25,
-                        state: 'moving',
-                        arriveTime: 0,
-                    });
-                }
-                if (hIons.length > targetH) hIons.length = targetH;
+      document.getElementById('btn-single').onclick = () => {
+        if (isMulti) { isMulti = false;
+          document.getElementById('btn-single').classList.add('active');
+          document.getElementById('btn-multi').classList.remove('active');
+          initSystem(); }
+      };
+      document.getElementById('btn-multi').onclick = () => {
+        if (!isMulti) { isMulti = true;
+          document.getElementById('btn-multi').classList.add('active');
+          document.getElementById('btn-single').classList.remove('active');
+          initSystem(); }
+      };
+      document.getElementById('btn-lab').onclick = () => {
+        if (!isLab) { isLab = true;
+          document.getElementById('btn-lab').classList.add('active');
+          document.getElementById('btn-bio').classList.remove('active');
+          initSystem(); }
+      };
+      document.getElementById('btn-bio').onclick = () => {
+        if (isLab) { isLab = false;
+          document.getElementById('btn-bio').classList.add('active');
+          document.getElementById('btn-lab').classList.remove('active');
+          initSystem(); }
+      };
 
-                while (ohIons.length < targetOH) {
-                    ohIons.push({
-                        x: 30 + Math.random() * (w - 60),
-                        y: Math.random() * h,
-                        vx: -0.5 - Math.random() * 0.45,
-                        vy: (Math.random() - 0.5) * 0.25,
-                        state: 'moving',
-                        arriveTime: 0,
-                    });
-                }
-                if (ohIons.length > targetOH) ohIons.length = targetOH;
-            }
+      window.addEventListener('resize', () => {
+        if (animationId) cancelAnimationFrame(animationId);
+        resizeCanvas();
+        animationId = requestAnimationFrame(animate);
+      });
 
-            function drawFunctionalGroup(x, y, bg, text, stroke) {
-                const groupRadius = Math.max(16, Math.min(26, singleMolRadius * 0.4));
-                ctx.beginPath();
-                ctx.arc(x, y, groupRadius, 0, Math.PI * 2);
-                ctx.fillStyle = bg;
-                ctx.fill();
-                ctx.strokeStyle = stroke;
-                ctx.lineWidth = Math.max(2, groupRadius * 0.13);
-                ctx.stroke();
-                ctx.fillStyle = '#fff';
-                const fontSize = Math.max(9, Math.min(13, groupRadius * 0.5));
-                ctx.font = 'bold ' + fontSize + 'px "JetBrains Mono"';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(text, x, y);
-            }
-
-            function getCanvasLogical() {
-                const dpr = Math.min(window.devicePixelRatio || 1, 2);
-                return {
-                    w: canvas.width / dpr,
-                    h: canvas.height / dpr,
-                    dpr: dpr,
-                };
-            }
-
-            function animate(timestamp) {
-                if (!lastTimestamp) lastTimestamp = timestamp;
-                const dt = Math.min(50, timestamp - lastTimestamp);
-                lastTimestamp = timestamp;
-
-                const logical = getCanvasLogical();
-                const cw = logical.w;
-                const ch = logical.h;
-
-                updateEnvironmentIons();
-                const ph = parseFloat(phSlider.value);
-                const pI = parseFloat(piSlider.value);
-                const diff = ph - pI;
-                const isAtPI = Math.abs(diff) <= 0.3;
-                const isCationic = diff < -0.3;
-                const isAnionic = diff > 0.3;
-
-                ctx.clearRect(0, 0, cw, ch);
-                ctx.fillStyle = '#f8fafc';
-                ctx.fillRect(0, 0, cw, ch);
-
-                for (let i = 0; i < cw; i += 35) {
-                    ctx.beginPath();
-                    ctx.moveTo(i, 0);
-                    ctx.lineTo(i, ch);
-                    ctx.strokeStyle = '#e9eef3';
-                    ctx.lineWidth = 0.4;
-                    ctx.stroke();
-                }
-
-                document.getElementById('anode-line').style.display = isLab ? 'block' : 'none';
-                document.getElementById('cathode-line').style.display = isLab ? 'block' : 'none';
-                document.querySelectorAll('.pole-label').forEach(el => el.style.display = isLab ? 'block' :
-                    'none');
-
-                const leftEdge = 14;
-                const rightEdge = cw - 14;
-                const stayDuration = 1000;
-
-                // ========== 离子运动 ==========
-                const ionRadius = Math.max(3, Math.min(4.5, cw * 0.011));
-
-                if (isLab) {
-                    for (let i = hIons.length - 1; i >= 0; i--) {
-                        const p = hIons[i];
-                        if (p.state === 'moving') {
-                            p.vx += 0.022;
-                            if (p.vx > 1.8) p.vx = 1.8;
-                            p.x += p.vx;
-                            p.y += p.vy;
-                            if (p.y < 6) { p.y = 6;
-                                p.vy *= -0.35; }
-                            if (p.y > ch - 6) { p.y = ch - 6;
-                                p.vy *= -0.35; }
-                            if (p.x >= rightEdge) {
-                                p.x = rightEdge;
-                                p.state = 'arrived';
-                                p.arriveTime = timestamp;
-                                p.vx = 0;
-                                p.vy = 0;
-                            }
-                        } else if (p.state === 'arrived') {
-                            if (timestamp - p.arriveTime >= stayDuration) {
-                                p.x = 30 + Math.random() * (cw - 60);
-                                p.y = 14 + Math.random() * (ch - 28);
-                                p.vx = 0.5 + Math.random() * 0.45;
-                                p.vy = (Math.random() - 0.5) * 0.25;
-                                p.state = 'moving';
-                            }
-                        }
-                        ctx.beginPath();
-                        ctx.arc(p.x, p.y, ionRadius, 0, Math.PI * 2);
-                        ctx.fillStyle = COLOR_RED;
-                        ctx.fill();
-                        ctx.strokeStyle = '#fff';
-                        ctx.lineWidth = 1;
-                        ctx.stroke();
-                    }
-
-                    for (let i = ohIons.length - 1; i >= 0; i--) {
-                        const p = ohIons[i];
-                        if (p.state === 'moving') {
-                            p.vx -= 0.022;
-                            if (p.vx < -1.8) p.vx = -1.8;
-                            p.x += p.vx;
-                            p.y += p.vy;
-                            if (p.y < 6) { p.y = 6;
-                                p.vy *= -0.35; }
-                            if (p.y > ch - 6) { p.y = ch - 6;
-                                p.vy *= -0.35; }
-                            if (p.x <= leftEdge) {
-                                p.x = leftEdge;
-                                p.state = 'arrived';
-                                p.arriveTime = timestamp;
-                                p.vx = 0;
-                                p.vy = 0;
-                            }
-                        } else if (p.state === 'arrived') {
-                            if (timestamp - p.arriveTime >= stayDuration) {
-                                p.x = 30 + Math.random() * (cw - 60);
-                                p.y = 14 + Math.random() * (ch - 28);
-                                p.vx = -0.5 - Math.random() * 0.45;
-                                p.vy = (Math.random() - 0.5) * 0.25;
-                                p.state = 'moving';
-                            }
-                        }
-                        ctx.beginPath();
-                        ctx.arc(p.x, p.y, ionRadius, 0, Math.PI * 2);
-                        ctx.fillStyle = COLOR_BLU;
-                        ctx.fill();
-                        ctx.strokeStyle = '#fff';
-                        ctx.lineWidth = 1;
-                        ctx.stroke();
-                    }
-                } else {
-                    for (let p of hIons) {
-                        p.vx += (Math.random() - 0.5) * 0.6;
-                        p.vy += (Math.random() - 0.5) * 0.6;
-                        const spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
-                        if (spd > 1.6) { p.vx *= 1.6 / spd;
-                            p.vy *= 1.6 / spd; }
-                        p.x += p.vx;
-                        p.y += p.vy;
-                        if (p.x < leftEdge) { p.x = leftEdge;
-                            p.vx *= -0.85; }
-                        if (p.x > rightEdge) { p.x = rightEdge;
-                            p.vx *= -0.85; }
-                        if (p.y < 8) { p.y = 8;
-                            p.vy *= -0.85; }
-                        if (p.y > ch - 8) { p.y = ch - 8;
-                            p.vy *= -0.85; }
-                        ctx.beginPath();
-                        ctx.arc(p.x, p.y, ionRadius, 0, Math.PI * 2);
-                        ctx.fillStyle = COLOR_RED;
-                        ctx.fill();
-                        ctx.strokeStyle = '#fff';
-                        ctx.lineWidth = 1;
-                        ctx.stroke();
-                    }
-                    for (let p of ohIons) {
-                        p.vx += (Math.random() - 0.5) * 0.6;
-                        p.vy += (Math.random() - 0.5) * 0.6;
-                        const spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
-                        if (spd > 1.6) { p.vx *= 1.6 / spd;
-                            p.vy *= 1.6 / spd; }
-                        p.x += p.vx;
-                        p.y += p.vy;
-                        if (p.x < leftEdge) { p.x = leftEdge;
-                            p.vx *= -0.85; }
-                        if (p.x > rightEdge) { p.x = rightEdge;
-                            p.vx *= -0.85; }
-                        if (p.y < 8) { p.y = 8;
-                            p.vy *= -0.85; }
-                        if (p.y > ch - 8) { p.y = ch - 8;
-                            p.vy *= -0.85; }
-                        ctx.beginPath();
-                        ctx.arc(p.x, p.y, ionRadius, 0, Math.PI * 2);
-                        ctx.fillStyle = COLOR_BLU;
-                        ctx.fill();
-                        ctx.strokeStyle = '#fff';
-                        ctx.lineWidth = 1;
-                        ctx.stroke();
-                    }
-                }
-
-                // ========== 蛋白质分子 ==========
-                let netChargeLabel = '±';
-                let netChargeValue = '0.0';
-                if (isCationic) { netChargeLabel = '+';
-                    netChargeValue = '+' + Math.abs(diff).toFixed(1); } else if (isAnionic) { netChargeLabel = '−';
-                    netChargeValue = '−' + Math.abs(diff).toFixed(1); }
-
-                const currentFuncOffset = isMulti ? getFuncGroupOffset(getMultiMolRadius()) : funcGroupOffset;
-
-                for (let m of molecules) {
-                    if (!isLab || isAtPI) {
-                        m.vx += (Math.random() - 0.5) * 0.25;
-                        m.vy += (Math.random() - 0.5) * 0.25;
-                    }
-                    if (isLab) {
-                        const force = isMulti ? 0.22 : 0.28;
-                        if (isCationic) m.vx += force;
-                        if (isAnionic) m.vx -= force;
-                    }
-                    if (isMulti && isAtPI) {
-                        for (let other of molecules) {
-                            if (other === m) continue;
-                            let dx = other.x - m.x,
-                                dy = other.y - m.y;
-                            let dist = Math.sqrt(dx * dx + dy * dy);
-                            const repelDist = m.radius * 5;
-                            if (dist < repelDist && dist > m.radius * 0.8) {
-                                const forceMag = 0.12;
-                                m.vx -= (dx / dist) * forceMag;
-                                m.vy -= (dy / dist) * forceMag;
-                            }
-                        }
-                        m.vy += 0.2;
-                    }
-                    m.vx *= 0.88;
-                    m.vy *= 0.88;
-                    m.x += m.vx;
-                    m.y += m.vy;
-                    let edge = m.radius + 16;
-                    m.x = Math.max(edge, Math.min(cw - edge, m.x));
-                    m.y = Math.max(m.radius + 8, Math.min(ch - m.radius - 8, m.y));
-
-                    if (!isMulti) {
-                        ctx.beginPath();
-                        ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2);
-                        ctx.fillStyle = COLOR_CORE;
-                        ctx.fill();
-                        ctx.strokeStyle = '#0f172a';
-                        ctx.lineWidth = Math.max(3, m.radius * 0.07);
-                        ctx.stroke();
-
-                        const fgOff = currentFuncOffset;
-                        if (isCationic) {
-                            drawFunctionalGroup(m.x - fgOff, m.y, COLOR_RED, '—NH₃⁺', '#000');
-                        } else if (isAtPI) {
-                            drawFunctionalGroup(m.x - fgOff, m.y, COLOR_RED, '—NH₃⁺', '#000');
-                            drawFunctionalGroup(m.x + fgOff, m.y, COLOR_BLK, '—COO⁻', '#fff');
-                        } else if (isAnionic) {
-                            drawFunctionalGroup(m.x + fgOff, m.y, COLOR_BLK, '—COO⁻', '#fff');
-                        }
-                        ctx.fillStyle = isAtPI ? COLOR_GRN : '#fff';
-                        const chargeFontSize = Math.max(22, Math.min(38, m.radius * 0.6));
-                        ctx.font = 'bold ' + chargeFontSize + 'px "Inter"';
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        ctx.fillText(netChargeLabel, m.x, m.y);
-                        ctx.fillStyle = '#0f172a';
-                        const labelFontSize = Math.max(10, Math.min(14, m.radius * 0.22));
-                        ctx.font = '500 ' + labelFontSize + 'px "Inter"';
-                        ctx.fillText('蛋白质', m.x, m.y - m.radius * 0.82);
-                    } else {
-                        let mColor = COLOR_GRN;
-                        if (isCationic) mColor = COLOR_RED;
-                        if (isAnionic) mColor = COLOR_BLK;
-                        ctx.beginPath();
-                        ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2);
-                        ctx.fillStyle = mColor;
-                        ctx.fill();
-                        ctx.strokeStyle = isAnionic ? '#fff' : '#0f172a';
-                        ctx.lineWidth = Math.max(1.5, m.radius * 0.15);
-                        ctx.stroke();
-                        ctx.fillStyle = '#fff';
-                        const mFontSize = Math.max(10, Math.min(16, m.radius * 0.95));
-                        ctx.font = 'bold ' + mFontSize + 'px "Inter"';
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        ctx.fillText(netChargeLabel, m.x, m.y);
-                    }
-                }
-
-                // 监控面板
-                phDisplay.innerText = ph.toFixed(1);
-                piDisplay.innerText = pI.toFixed(1);
-                dataCharge.innerText = netChargeValue;
-                if (ph < 6.8) dataEnv.innerHTML =
-                    '<span style="color:#FF3B30;">H⁺ (红) 多于 OH⁻ (蓝)</span>';
-                else if (ph > 7.2) dataEnv.innerHTML =
-                    '<span style="color:#007AFF;">OH⁻ (蓝) 多于 H⁺ (红)</span>';
-                else dataEnv.innerHTML = '<span style="color:#94a3b8;">H⁺ 与 OH⁻ 平衡</span>';
-
-                if (isAtPI) {
-                    dataCharge.style.color = COLOR_GRN;
-                    dataState.innerHTML =
-                        '<span style="background:#34C759;color:#fff;padding:2px 7px;border-radius:16px;font-size:10px;">兼性离子</span>';
-                    dataSolubility.innerText = isLab ? '⏸️ 静止' : '🌊 布朗扩散';
-                    dataSolubility.style.color = COLOR_GRN;
-                } else if (isCationic) {
-                    dataCharge.style.color = COLOR_RED;
-                    dataState.innerHTML =
-                        '<span style="background:#FF3B30;color:#fff;padding:2px 7px;border-radius:16px;font-size:10px;">阳离子</span>';
-                    dataSolubility.innerText = isLab ? '➡️ 向负极' : '🌊 布朗扩散';
-                    dataSolubility.style.color = COLOR_RED;
-                } else {
-                    dataCharge.style.color = '#fff';
-                    dataState.innerHTML =
-                        '<span style="background:#000;color:#fff;padding:2px 7px;border-radius:16px;font-size:10px;">阴离子</span>';
-                    dataSolubility.innerText = isLab ? '⬅️ 向正极' : '🌊 布朗扩散';
-                    dataSolubility.style.color = '#94a3b8';
-                }
-
-                animationId = requestAnimationFrame(animate);
-            }
-
-            phSlider.addEventListener('input', updateEnvironmentIons);
-            piSlider.addEventListener('input', () => {});
-
-            document.getElementById('btn-single').onclick = () => {
-                if (isMulti) {
-                    isMulti = false;
-                    document.getElementById('btn-single').classList.add('active');
-                    document.getElementById('btn-multi').classList.remove('active');
-                    singleMolRadius = getSingleMolRadius();
-                    funcGroupOffset = getFuncGroupOffset(singleMolRadius);
-                    initSystem();
-                }
-            };
-            document.getElementById('btn-multi').onclick = () => {
-                if (!isMulti) {
-                    isMulti = true;
-                    document.getElementById('btn-multi').classList.add('active');
-                    document.getElementById('btn-single').classList.remove('active');
-                    initSystem();
-                }
-            };
-            document.getElementById('btn-lab').onclick = () => {
-                if (!isLab) {
-                    isLab = true;
-                    document.getElementById('btn-lab').classList.add('active');
-                    document.getElementById('btn-bio').classList.remove('active');
-                    initSystem();
-                }
-            };
-            document.getElementById('btn-bio').onclick = () => {
-                if (isLab) {
-                    isLab = false;
-                    document.getElementById('btn-bio').classList.add('active');
-                    document.getElementById('btn-lab').classList.remove('active');
-                    initSystem();
-                }
-            };
-
-            let resizeTimeout;
-            window.addEventListener('resize', () => {
-                clearTimeout(resizeTimeout);
-                resizeTimeout = setTimeout(() => {
-                    if (animationId) cancelAnimationFrame(animationId);
-                    resizeCanvas();
-                    singleMolRadius = getSingleMolRadius();
-                    funcGroupOffset = getFuncGroupOffset(singleMolRadius);
-                    animationId = requestAnimationFrame(animate);
-                }, 200);
-            });
-
-            window.addEventListener('orientationchange', () => {
-                setTimeout(() => {
-                    if (animationId) cancelAnimationFrame(animationId);
-                    resizeCanvas();
-                    singleMolRadius = getSingleMolRadius();
-                    funcGroupOffset = getFuncGroupOffset(singleMolRadius);
-                    animationId = requestAnimationFrame(animate);
-                }, 400);
-            });
-
-            resizeCanvas();
-            singleMolRadius = getSingleMolRadius();
-            funcGroupOffset = getFuncGroupOffset(singleMolRadius);
-            initSystem();
-            animationId = requestAnimationFrame(animate);
-        })();
-    </script>
+      resizeCanvas();
+      animationId = requestAnimationFrame(animate);
+    })();
+  </script>
 </body>
 </html>
